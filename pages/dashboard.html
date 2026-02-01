@@ -1,188 +1,162 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <title>Dashboard Lite</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background: #f8fafc; font-family: 'Inter', sans-serif; padding: 20px; color: #1e293b; }
-        
-        /* WELCOME SECTION */
-        .welcome-box { margin-bottom: 30px; }
-        .welcome-title { font-weight: 800; color: #0f172a; letter-spacing: -0.5px; margin-bottom: 5px; }
-        
-        /* STAT CARDS */
-        .stat-card {
-            background: white; border-radius: 16px; padding: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;
-            height: 100%; transition: 0.2s; position: relative; overflow: hidden;
+        /* CSS NATIVE - RINGAN & CEPAT */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            background-color: #f4f7f6; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            padding: 15px; 
+            margin: 0;
+            color: #333;
         }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-color: #3b82f6; }
-        
-        .stat-icon {
-            width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
-            font-size: 18px; margin-bottom: 15px;
+
+        h5 { margin: 0 0 15px 0; font-size: 14px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* GRID SYSTEM RINGAN */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 25px; }
+
+        /* KARTU STATISTIK */
+        .card { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 15px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03); 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center;
         }
-        .icon-blue { background: #dbeafe; color: #2563eb; }
-        .icon-green { background: #dcfce7; color: #166534; }
-        .icon-orange { background: #ffedd5; color: #c2410c; }
-        .icon-purple { background: #f3e8ff; color: #7e22ce; }
-
-        .stat-val { font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.2; }
-        .stat-label { font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-
-        /* RECENT TABLE */
-        .recent-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
-        .recent-header { padding: 20px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
-        .table-custom th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; background: #f8fafc; border: none; padding: 12px 20px; }
-        .table-custom td { border-bottom: 1px solid #f1f5f9; padding: 15px 20px; font-size: 14px; vertical-align: middle; }
-        .table-custom tr:last-child td { border-bottom: none; }
         
-        .badge-soft { padding: 5px 10px; border-radius: 6px; font-weight: 600; font-size: 11px; }
-        .bg-paid { background: #dcfce7; color: #15803d; }
-        .bg-unpaid { background: #fee2e2; color: #b91c1c; }
-        .bg-partial { background: #fef3c7; color: #b45309; }
+        .card-header { display: flex; align-items: center; margin-bottom: 8px; }
+        .icon-box { 
+            width: 32px; height: 32px; border-radius: 8px; 
+            display: flex; align-items: center; justify-content: center; 
+            margin-right: 10px; font-size: 14px;
+        }
+
+        /* WARNA-WARNA */
+        .text-green { color: #10b981; } .bg-green-soft { background: #d1fae5; color: #10b981; }
+        .text-red { color: #ef4444; } .bg-red-soft { background: #fee2e2; color: #ef4444; }
+        .text-blue { color: #3b82f6; }
+        .text-info { color: #06b6d4; }
+        .text-orange { color: #f59e0b; }
+
+        .big-num { font-size: 18px; font-weight: 700; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .small-label { font-size: 11px; color: #888; font-weight: 600; }
+
+        /* TOMBOL MENU */
+        .btn-menu {
+            background: white; border: 1px solid #e5e7eb;
+            border-radius: 12px; padding: 15px 0;
+            text-align: center; cursor: pointer;
+            transition: background 0.1s;
+            color: #4b5563;
+        }
+        .btn-menu:active { background: #f3f4f6; transform: scale(0.98); }
+        .btn-menu i { font-size: 24px; margin-bottom: 8px; display: block; }
+        .btn-menu span { font-size: 13px; font-weight: 600; }
+
+        .btn-outline-blue { color: #3b82f6; border-color: #3b82f6; }
+        .btn-outline-green { color: #10b981; border-color: #10b981; }
     </style>
 </head>
 <body>
 
-    <div class="welcome-box">
-        <h2 class="welcome-title">👋 Halo, Owner!</h2>
-        <p class="text-muted mb-0">Ini ringkasan performa bisnismu hari ini.</p>
-    </div>
-
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div class="stat-icon icon-green"><i class="fas fa-wallet"></i></div>
-                <div class="stat-label">Total Pendapatan</div>
-                <div class="stat-val" id="st-revenue">RM 0</div>
+    <h5>Overview Keuangan</h5>
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-header">
+                <div class="icon-box bg-green-soft"><i class="fas fa-wallet"></i></div>
+                <span class="small-label">PEMASUKAN</span>
             </div>
+            <div class="big-num text-green" id="total-revenue">Loading...</div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div class="stat-icon icon-orange"><i class="fas fa-clock"></i></div>
-                <div class="stat-label">Tagihan Pending</div>
-                <div class="stat-val" id="st-pending">RM 0</div>
+        <div class="card">
+            <div class="card-header">
+                <div class="icon-box bg-red-soft"><i class="fas fa-exclamation-circle"></i></div>
+                <span class="small-label">PIUTANG (SISA)</span>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div class="stat-icon icon-blue"><i class="fas fa-users"></i></div>
-                <div class="stat-label">Total Klien</div>
-                <div class="stat-val" id="st-clients">0</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div class="stat-icon icon-purple"><i class="fas fa-rocket"></i></div>
-                <div class="stat-label">Proyek Aktif</div>
-                <div class="stat-val" id="st-projects">0</div>
-            </div>
+            <div class="big-num text-red" id="total-unpaid">Loading...</div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-8 mb-3">
-            <div class="recent-card">
-                <div class="recent-header">
-                    <h6 class="fw-bold mb-0">Tagihan Terakhir</h6>
-                    <small class="text-primary fw-bold" style="cursor:pointer" onclick="parent.changePage('pages/invoice.html')">Lihat Semua</small>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-custom mb-0">
-                        <thead>
-                            <tr>
-                                <th>Invoice</th>
-                                <th>Klien</th>
-                                <th>Total</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recent-table">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
+    <div class="grid-3">
+        <div class="card" onclick="navTo('projects')" style="align-items: center; padding: 10px;">
+            <div class="big-num text-blue" id="count-proj">0</div>
+            <span class="small-label">PROJECTS</span>
         </div>
+        <div class="card" onclick="navTo('clients')" style="align-items: center; padding: 10px;">
+            <div class="big-num text-info" id="count-client">0</div>
+            <span class="small-label">CLIENTS</span>
+        </div>
+        <div class="card" onclick="navTo('invoices')" style="align-items: center; padding: 10px;">
+            <div class="big-num text-orange" id="count-inv">0</div>
+            <span class="small-label">INVOICES</span>
+        </div>
+    </div>
 
-        <div class="col-lg-4">
-            <div class="recent-card p-3">
-                <h6 class="fw-bold mb-3">Quick Actions</h6>
-                <div class="d-grid gap-2">
-                    <button class="btn btn-primary fw-bold py-2" onclick="parent.changePage('pages/invoice.html')">
-                        <i class="fas fa-plus-circle me-2"></i> Buat Invoice
-                    </button>
-                    <button class="btn btn-outline-dark fw-bold py-2" onclick="parent.changePage('pages/clients.html')">
-                        <i class="fas fa-user-plus me-2"></i> Tambah Klien
-                    </button>
-                    <button class="btn btn-outline-success fw-bold py-2" onclick="parent.MIJ_DB.manualSyncToCloud()">
-                        <i class="fas fa-cloud-upload-alt me-2"></i> Sync Cloud
-                    </button>
-                </div>
-            </div>
+    <h5>Menu Cepat</h5>
+    <div class="grid-2">
+        <div class="btn-menu btn-outline-blue" onclick="navTo('invoices')">
+            <i class="fas fa-plus-circle"></i>
+            <span>Buat Invoice</span>
+        </div>
+        <div class="btn-menu btn-outline-green" onclick="navTo('payments')">
+            <i class="fas fa-money-bill-wave"></i>
+            <span>Input Bayar</span>
         </div>
     </div>
 
     <script>
-        function getDB() { return window.parent.MIJ_DB ? window.parent.MIJ_DB.getAllData() : JSON.parse(localStorage.getItem('MIJ_ERP_v2') || '{}'); }
-
-        function refreshDashboard() {
-            const db = getDB();
-            
-            // 1. HITUNG OMSET (Dari Payments)
-            const payments = db.payments || [];
-            const revenue = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-            document.getElementById('st-revenue').innerText = 'RM ' + revenue.toLocaleString();
-
-            // 2. HITUNG PENDING (Dari Invoice yang belum lunas)
-            const invoices = db.invoices || [];
-            const pending = invoices.reduce((sum, inv) => {
-                if(inv.status !== 'Paid') {
-                    return sum + (inv.grandTotal - (inv.paidAmount || 0));
-                }
-                return sum;
-            }, 0);
-            document.getElementById('st-pending').innerText = 'RM ' + pending.toLocaleString();
-
-            // 3. COUNTER LAIN
-            document.getElementById('st-clients').innerText = (db.clients || []).length;
-            
-            // Proyek yang belum 100%
-            const projects = db.projects || [];
-            const activeProj = projects.filter(p => p.progress < 100).length;
-            document.getElementById('st-projects').innerText = activeProj;
-
-            // 4. TABEL RECENT (Ambil 5 Invoice Terakhir)
-            const recentInv = invoices.slice().reverse().slice(0, 5);
-            const tableBody = document.getElementById('recent-table');
-            tableBody.innerHTML = '';
-
-            if(recentInv.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Belum ada data</td></tr>';
-            } else {
-                recentInv.forEach(inv => {
-                    let badge = 'bg-unpaid';
-                    if(inv.status === 'Paid') badge = 'bg-paid';
-                    if(inv.status === 'Partial') badge = 'bg-partial';
-
-                    tableBody.innerHTML += `
-                        <tr>
-                            <td class="fw-bold">${inv.no}</td>
-                            <td>${inv.clientName}</td>
-                            <td>RM ${Number(inv.grandTotal).toLocaleString()}</td>
-                            <td><span class="badge-soft ${badge}">${inv.status}</span></td>
-                        </tr>
-                    `;
-                });
+        function navTo(page) {
+            if (window.parent && window.parent.loadPage) {
+                window.parent.loadPage(page);
             }
         }
 
-        document.addEventListener('DOMContentLoaded', refreshDashboard);
-        
-        // Auto refresh tiap 5 detik biar update kalau ada perubahan di tab lain
-        setInterval(refreshDashboard, 5000);
+        function loadDashboardData() {
+            // Gunakan requestAnimationFrame agar UI merender dulu baru mikir (Anti-Lag)
+            requestAnimationFrame(() => {
+                try {
+                    const db = window.parent.MIJ_DB.getAllData();
+                    
+                    let totalRevenue = 0;
+                    let totalUnpaid = 0;
+
+                    // Optimasi Loop: Hitung sekali jalan
+                    const invoices = db.invoices || [];
+                    for (let i = 0; i < invoices.length; i++) {
+                        const inv = invoices[i];
+                        if (!inv.deleted) {
+                            totalRevenue += Number(inv.paidAmount || 0);
+                            totalUnpaid += (Number(inv.grandTotal) - Number(inv.paidAmount || 0));
+                        }
+                    }
+
+                    const countProj = (db.projects || []).filter(p => !p.deleted).length;
+                    const countClient = (db.clients || []).filter(c => !c.deleted).length;
+                    const countInv = invoices.filter(i => !i.deleted).length;
+
+                    // Update UI
+                    document.getElementById('total-revenue').innerText = 'RM ' + totalRevenue.toLocaleString();
+                    document.getElementById('total-unpaid').innerText = 'RM ' + totalUnpaid.toLocaleString();
+                    document.getElementById('count-proj').innerText = countProj;
+                    document.getElementById('count-client').innerText = countClient;
+                    document.getElementById('count-inv').innerText = countInv;
+
+                } catch (e) {
+                    console.error("Gagal load dashboard", e);
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', loadDashboardData);
     </script>
 </body>
 </html>

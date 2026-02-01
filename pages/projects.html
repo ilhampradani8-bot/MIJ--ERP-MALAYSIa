@@ -1,120 +1,106 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Projects Kanban</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background: #f8fafc; font-family: 'Inter', sans-serif; padding-top: 80px; padding-bottom: 20px; color: #1e293b; overflow-x: hidden; }
-        
-        /* HEADER */
-        .header { position: fixed; top: 0; left: 0; right: 0; height: 70px; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #e2e8f0; z-index: 100; }
-        
-        /* KANBAN BOARD */
-        .kanban-container { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; height: calc(100vh - 100px); align-items: flex-start; }
-        .kanban-col { flex: 0 0 320px; background: #f1f5f9; border-radius: 12px; display: flex; flex-direction: column; max-height: 100%; border: 1px solid #e2e8f0; }
-        .col-header { padding: 15px; font-weight: 700; color: #475569; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; background: #fff; border-radius: 12px 12px 0 0; }
-        .col-body { padding: 10px; overflow-y: auto; flex-grow: 1; }
-
-        /* CARDS */
-        .proj-card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e2e8f0; cursor: pointer; transition: 0.2s; position: relative; }
-        .proj-card:hover { transform: translateY(-3px); box-shadow: 0 8px 15px -3px rgba(0,0,0,0.1); border-color: #3b82f6; }
-        
-        .badge-prio { font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
-        .prio-high { background: #fee2e2; color: #991b1b; } .prio-med { background: #ffedd5; color: #9a3412; } .prio-low { background: #dcfce7; color: #166534; }
-        .progress-micro { height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 10px; overflow: hidden; }
-        .progress-fill { height: 100%; background: #3b82f6; border-radius: 3px; }
-        .deadline-badge { font-size: 11px; color: #64748b; display: flex; align-items: center; gap: 5px; margin-top: 8px; }
-        .deadline-over { color: #dc2626; font-weight: bold; }
-
-        /* PDF HIDDEN */
-        /* PDF REPORT HIDDEN (UKURAN DIPERBAIKI) */
-        #pdf-template { 
-            display: none; 
-            width: 700px; /* Dikecilkan dari 800px agar muat A4 Portrait */
-            background: white; 
-            padding: 30px; 
-            font-family: 'Inter', sans-serif; 
-            color: #000; 
-        }
-        .rpt-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        /* Font size dikecilkan sedikit biar kolom tidak sempit */
-        .rpt-table th { background: #f1f5f9; padding: 8px; text-align: left; font-size: 10px; border-bottom: 2px solid #000; text-transform: uppercase; }
-        .rpt-table td { padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px; }
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; padding: 20px; }
+        .kanban-col { background: #e9ecef; border-radius: 10px; padding: 15px; min-height: 80vh; }
+        .kanban-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; color: #495057; }
+        .kanban-card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.2s; cursor: grab; }
+        .kanban-card:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .badge-count { background: #dee2e6; color: #495057; border-radius: 12px; padding: 2px 8px; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <div><h5 class="fw-bold mb-0">🚀 Projects</h5><small class="text-muted">Kanban Board</small></div>
-        <div>
-            <button class="btn btn-outline-dark rounded-pill px-3 fw-bold me-2" onclick="exportReport()"><i class="fas fa-file-pdf me-2"></i> Laporan</button>
-            <button class="btn btn-primary rounded-pill px-3 fw-bold shadow-sm" onclick="addProject()"><i class="fas fa-plus me-2"></i> Baru</button>
-        </div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0"><i class="fas fa-tasks me-2"></i>Project Board</h4>
+        <button class="btn btn-primary rounded-pill px-4 fw-bold" onclick="addProject()">
+            <i class="fas fa-plus me-2"></i>New Project
+        </button>
     </div>
 
-    <div class="container-fluid">
-        <div class="kanban-container">
-            <div class="kanban-col"><div class="col-header" style="border-top: 4px solid #64748b;"><span>TO DO</span> <span class="badge bg-secondary" id="count-todo">0</span></div><div class="col-body" id="col-todo"></div></div>
-            <div class="kanban-col"><div class="col-header" style="border-top: 4px solid #3b82f6;"><span>IN PROGRESS</span> <span class="badge bg-primary" id="count-doing">0</span></div><div class="col-body" id="col-doing"></div></div>
-            <div class="kanban-col"><div class="col-header" style="border-top: 4px solid #f59e0b;"><span>TESTING</span> <span class="badge bg-warning text-dark" id="count-review">0</span></div><div class="col-body" id="col-review"></div></div>
-            <div class="kanban-col"><div class="col-header" style="border-top: 4px solid #10b981;"><span>DONE</span> <span class="badge bg-success" id="count-done">0</span></div><div class="col-body" id="col-done"></div></div>
+    <div class="row g-3" id="kanban-board">
+        <div class="col-md-3 col-6">
+            <div class="kanban-col">
+                <div class="kanban-header">
+                    <span>TO DO</span>
+                    <span class="badge-count" id="count-todo">0</span>
+                </div>
+                <div id="col-todo"></div> </div>
         </div>
-    </div>
+        
+        <div class="col-md-3 col-6">
+            <div class="kanban-col">
+                <div class="kanban-header">
+                    <span>IN PROGRESS</span>
+                    <span class="badge-count" id="count-progress">0</span>
+                </div>
+                <div id="col-progress"></div> </div>
+        </div>
 
-    <div id="wrapper-pdf" style="position: absolute; left: -9999px;">
-        <div id="pdf-template">
-            <div class="d-flex justify-content-between mb-4 border-bottom pb-3">
-                <img src="../mij.png" style="width:100px; height:auto" onerror="this.style.display='none'">
-                <div class="text-end"><h2 class="fw-bold text-primary">PROJECT REPORT</h2><div class="text-muted small">Generated: <span id="rpt-date">-</span></div></div>
-            </div>
-            <div class="row mb-4">
-                <div class="col-6"><strong>MIJ DIGITAL</strong><br>IT Consultant & Software Dev</div>
-                <div class="col-6 text-end"><strong>Summary:</strong><br>Total Projects: <span id="rpt-total">0</span><br>Active Value: <span id="rpt-value" class="fw-bold">RM 0</span></div>
-            </div>
-            <table class="rpt-table">
-                <thead><tr><th width="30%">PROJECT NAME</th><th width="20%">CLIENT</th><th width="15%">DEADLINE</th><th width="15%">STATUS</th><th width="10%">PROGRESS</th><th width="10%" class="text-end">VALUE</th></tr></thead>
-                <tbody id="rpt-body"></tbody>
-            </table>
-            <div class="mt-5 text-center text-muted small"><p>Internal Use Only - Confidential</p></div>
+        <div class="col-md-3 col-6">
+            <div class="kanban-col">
+                <div class="kanban-header">
+                    <span>REVIEW</span>
+                    <span class="badge-count" id="count-review">0</span>
+                </div>
+                <div id="col-review"></div> </div>
+        </div>
+
+        <div class="col-md-3 col-6">
+            <div class="kanban-col">
+                <div class="kanban-header">
+                    <span>DONE</span>
+                    <span class="badge-count" id="count-done">0</span>
+                </div>
+                <div id="col-done"></div> </div>
         </div>
     </div>
 
     <script>
-        function getDB() { return window.parent.MIJ_DB ? window.parent.MIJ_DB.getAllData() : JSON.parse(localStorage.getItem('MIJ_ERP_v2') || '{}'); }
-        function saveDB(data) { window.parent.MIJ_DB ? window.parent.MIJ_DB.saveData(data) : localStorage.setItem('MIJ_ERP_v2', JSON.stringify(data)); }
-        const UI = window.parent.ShowAlert;
+        // --- JAVASCRIPT LOGIC ---
 
-        // === 1. RENDER & AUTO FIX ===
+        // Helper: Ambil DB dari Parent
+        function getDB() { return window.parent.MIJ_DB.getAllData(); }
+        function saveDB(data) { window.parent.MIJ_DB.saveData(data); }
+
+        // FUNGSI RENDER (Menampilkan Data)
         function render() {
             const db = getDB();
             
-            // Bersihkan kolom dulu
+            // 1. Bersihkan Kolom Dulu
             ['todo', 'progress', 'review', 'done'].forEach(s => {
-                document.getElementById('col-'+s).innerHTML = '';
-                document.getElementById('count-'+s).innerText = '0';
+                const col = document.getElementById('col-'+s);
+                const count = document.getElementById('count-'+s);
+                if(col) col.innerHTML = ''; // Kosongkan isi
+                if(count) count.innerText = '0'; // Reset counter
             });
 
-            // FILTER FINAL: Hanya ambil yang deleted = false
+            // 2. Filter & Loop Projects
             const projects = (db.projects || []).filter(p => !p.deleted);
-
-            if(projects.length === 0) return; // Kalau kosong stop
+            
+            if(projects.length === 0) return;
 
             projects.forEach(p => {
-                // Pastikan kolom valid (fallback ke todo jika error)
-                const colId = ['todo', 'progress', 'review', 'done'].includes(p.kanbanStatus) ? 'col-'+p.kanbanStatus : 'col-todo';
-                const container = document.getElementById(colId);
-                
-                // Update counter
-                const countBadge = document.getElementById('count-'+ (p.kanbanStatus || 'todo'));
-                if(countBadge) countBadge.innerText = Number(countBadge.innerText) + 1;
+                // Tentukan masuk kolom mana (Default ke 'todo' jika status aneh)
+                let status = p.kanbanStatus || 'todo';
+                if(!['todo', 'progress', 'review', 'done'].includes(status)) status = 'todo';
 
-                // Render Card
+                const container = document.getElementById('col-' + status);
+                const counter = document.getElementById('count-' + status);
+
+                // Update Counter
+                if(counter) counter.innerText = Number(counter.innerText) + 1;
+
+                // Warna Border Priority
                 let borderClass = p.priority === 'High' ? 'border-danger' : (p.priority === 'Medium' ? 'border-warning' : 'border-light');
-                
+
+                // HTML Card
                 container.innerHTML += `
                     <div class="kanban-card border-start border-4 ${borderClass}">
                         <div class="d-flex justify-content-between mb-2">
@@ -129,11 +115,11 @@
                         </div>
                         <h6 class="fw-bold mb-1">${p.name}</h6>
                         <div class="d-flex justify-content-between align-items-center mt-3">
-                            <small class="text-muted"><i class="far fa-clock me-1"></i> ${p.deadline}</small>
-                            <span class="fw-bold text-primary">RM ${Number(p.value).toLocaleString()}</span>
+                            <small class="text-muted" style="font-size:11px"><i class="far fa-clock me-1"></i> ${p.deadline}</small>
+                            <span class="fw-bold text-primary small">RM ${(Number(p.value)||0).toLocaleString()}</span>
                         </div>
-                        <div class="mt-2">
-                             <select class="form-select form-select-sm" style="font-size:10px;" onchange="moveProject(${p.id}, this.value)">
+                        <div class="mt-2 pt-2 border-top">
+                             <select class="form-select form-select-sm" style="font-size:11px;" onchange="moveProject(${p.id}, this.value)">
                                 <option value="" disabled selected>Pindah Status...</option>
                                 <option value="todo">To Do</option>
                                 <option value="progress">In Progress</option>
@@ -146,153 +132,87 @@
             });
         }
 
-        // === 2. EXPORT REPORT (ANTI CRASH) ===
-        // === 3. EXPORT REPORT (FIX TERPOTONG) ===
-        function exportReport() {
-            try {
-                const db = getDB();
-                const projects = db.projects || [];
-                
-                if(projects.length === 0) {
-                    UI.toast('warning', 'Belum ada data proyek.');
-                    return;
-                }
-
-                // ISI DATA
-                document.getElementById('rpt-date').innerText = new Date().toLocaleDateString();
-                document.getElementById('rpt-total').innerText = projects.length;
-                
-                const totalVal = projects.reduce((sum, p) => sum + (p.value||0), 0);
-                document.getElementById('rpt-value').innerText = 'RM ' + totalVal.toLocaleString();
-
-                const tbody = document.getElementById('rpt-body');
-                tbody.innerHTML = '';
-
-                // Sortir biar rapi (Deadline terdekat diatas)
-                projects.sort((a,b) => (a.deadline || '9999') > (b.deadline || '9999') ? 1 : -1);
-
-                projects.forEach(p => {
-                    let rawStatus = p.kanbanStatus || 'todo'; 
-                    let statusBadge = rawStatus.toUpperCase();
-                    
-                    tbody.innerHTML += `
-                        <tr>
-                            <td class="fw-bold">${p.name}</td>
-                            <td>${p.clientName}</td>
-                            <td>${p.deadline || '-'}</td>
-                            <td><span style="font-weight:bold; font-size:9px; padding:2px 5px; border:1px solid #ccc; border-radius:4px;">${statusBadge}</span></td>
-                            <td>
-                                <div style="width:50px; background:#eee; height:4px; display:inline-block; vertical-align:middle;">
-                                    <div style="width:${p.progress}%; background:#000; height:4px;"></div>
-                                </div> ${p.progress}%
-                            </td>
-                            <td class="text-end">${(p.value||0).toLocaleString()}</td>
-                        </tr>
-                    `;
-                });
-
-                const el = document.getElementById('pdf-template');
-                el.style.display = 'block'; // Munculkan sebentar untuk dipotret
-
-                UI.toast('info', 'Sedang membuat PDF...');
-                
-                // KONFIGURASI AGAR PAS KERTAS A4
-                const opt = {
-                    margin:       [10, 10, 10, 10], // Margin (Atas, Kiri, Bawah, Kanan)
-                    filename:     'Project_Report_MIJ.pdf',
-                    image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2, useCORS: true }, // Scale 2 biar tajam
-                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                    pagebreak:    { mode: 'avoid-all' } // Mencegah tabel terpotong di tengah baris
-                };
-                
-                html2pdf().set(opt).from(el).save().then(() => {
-                    el.style.display = 'none'; // Sembunyikan lagi
-                    UI.toast('success', 'Download Berhasil!');
-                });
-
-            } catch (e) {
-                console.error(e);
-                alert("Terjadi kesalahan sistem: " + e.message);
-                document.getElementById('pdf-template').style.display = 'none';
-            }
-        }
-
-        // === 3. ADD / EDIT PROJECT ===
+        // FUNGSI TAMBAH PROJECT
         async function addProject() {
             const db = getDB();
             const clients = db.clients || [];
-            if(clients.length === 0) { UI.toast('error', 'Data klien kosong!'); return; }
-            const clientOpts = clients.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+            
+            if(clients.length === 0) { 
+                window.parent.Swal.fire('Ups', 'Belum ada data Klien. Tambahkan Klien dulu.', 'warning'); 
+                return; 
+            }
+
+            const clientOpts = clients.filter(c=>!c.deleted).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
 
             const { value: formValues } = await window.parent.Swal.fire({
                 title: 'New Project',
-                html: `<div class="text-start mt-2"><div class="form-floating mb-2"><input id="swal-name" class="form-control" placeholder="Name"><label>Project Name</label></div><div class="form-floating mb-2"><select id="swal-client" class="form-select">${clientOpts}</select><label>Client</label></div><div class="row g-2 mb-2"><div class="col-6"><div class="form-floating"><input type="date" id="swal-deadline" class="form-control"><label>Deadline</label></div></div><div class="col-6"><div class="form-floating"><input type="number" id="swal-value" class="form-control" placeholder="0"><label>Value (RM)</label></div></div></div><div class="form-floating"><select id="swal-prio" class="form-select"><option>Low</option><option selected>Medium</option><option>High</option></select><label>Priority</label></div></div>`,
-                confirmButtonText: 'Create', showCancelButton: true,
-                preConfirm: () => { const doc = window.parent.document; return { name: doc.getElementById('swal-name').value, client: doc.getElementById('swal-client').value, deadline: doc.getElementById('swal-deadline').value, value: doc.getElementById('swal-value').value, prio: doc.getElementById('swal-prio').value } }
+                html: `
+                    <div class="text-start mt-2">
+                        <div class="form-floating mb-2"><input id="swal-name" class="form-control" placeholder="Name"><label>Nama Proyek</label></div>
+                        <div class="form-floating mb-2"><select id="swal-client" class="form-select">${clientOpts}</select><label>Klien</label></div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6"><div class="form-floating"><input type="date" id="swal-deadline" class="form-control"><label>Deadline</label></div></div>
+                            <div class="col-6"><div class="form-floating"><input type="number" id="swal-value" class="form-control" placeholder="0"><label>Nilai (RM)</label></div></div>
+                        </div>
+                        <div class="form-floating"><select id="swal-prio" class="form-select"><option>Low</option><option selected>Medium</option><option>High</option></select><label>Prioritas</label></div>
+                    </div>
+                `,
+                confirmButtonText: 'Buat Proyek', showCancelButton: true,
+                preConfirm: () => { 
+                    const doc = window.parent.document; 
+                    return { 
+                        name: doc.getElementById('swal-name').value, 
+                        client: doc.getElementById('swal-client').value, 
+                        deadline: doc.getElementById('swal-deadline').value, 
+                        value: doc.getElementById('swal-value').value, 
+                        prio: doc.getElementById('swal-prio').value 
+                    } 
+                }
             });
 
             if(formValues && formValues.name) {
-                db.projects = db.projects || [];
-                
-                // --- UPDATE DISINI ---
                 db.projects.push({ 
                     id: Date.now(), 
-                    name: formValues.name, 
-                    clientName: formValues.client, 
-                    deadline: formValues.deadline, 
-                    value: Number(formValues.value), 
-                    priority: formValues.prio, 
-                    progress: 0, 
-                    kanbanStatus: 'todo',
-                    
-                    updated_at: new Date().toISOString(), // Tambahan
-                    deleted: false                        // Tambahan
+                    name: formValues.name, clientName: formValues.client, 
+                    deadline: formValues.deadline, value: Number(formValues.value), 
+                    priority: formValues.prio, progress: 0, kanbanStatus: 'todo',
+                    deleted: false // Wajib ada untuk Supabase
                 });
-                
-                saveDB(db); render(); UI.toast('success', 'Project created!');
+                saveDB(db); render();
+                window.parent.Swal.fire({icon: 'success', title: 'Berhasil', timer: 1500, showConfirmButton: false});
             }
         }
 
-        async function editProject(id) {
-            const db = getDB();
-            const p = db.projects.find(x => x.id == id);
-            
-            const { value: formValues } = await window.parent.Swal.fire({
-                title: `Edit: ${p.name}`,
-                html: `<div class="text-start mt-2"><label class="small fw-bold text-muted">STAGE</label><select id="swal-stage" class="form-select mb-3 fw-bold"><option value="todo" ${p.kanbanStatus=='todo'?'selected':''}>TO DO</option><option value="doing" ${p.kanbanStatus=='doing'?'selected':''}>IN PROGRESS</option><option value="review" ${p.kanbanStatus=='review'?'selected':''}>REVIEW</option><option value="done" ${p.kanbanStatus=='done'?'selected':''}>DONE</option></select><label class="small fw-bold text-muted">PROGRESS %</label><input type="range" class="form-range" min="0" max="100" value="${p.progress}" oninput="this.nextElementSibling.innerText = this.value + '%'"><div class="text-end fw-bold text-primary mb-3">${p.progress}%</div><div class="row g-2"><div class="col-6"><label class="small fw-bold text-muted">DEADLINE</label><input type="date" id="swal-dead" class="form-control" value="${p.deadline||''}"></div><div class="col-6"><label class="small fw-bold text-muted">VALUE (RM)</label><input type="number" id="swal-val" class="form-control" value="${p.value||0}"></div></div></div>`,
-                showDenyButton: true, showCancelButton: true, confirmButtonText: 'Save', denyButtonText: 'Delete', cancelButtonText: 'Cancel',
-                preConfirm: () => { const doc = window.parent.document; return { stage: doc.getElementById('swal-stage').value, progress: window.parent.Swal.getPopup().querySelector('input[type=range]').value, deadline: doc.getElementById('swal-dead').value, val: doc.getElementById('swal-val').value } }
-            });
-
-            if(formValues) {
-                p.kanbanStatus = formValues.stage; p.progress = Number(formValues.progress); p.deadline = formValues.deadline; p.value = Number(formValues.val);
-                if(p.kanbanStatus === 'done') p.progress = 100;
-                saveDB(db); render(); UI.toast('success', 'Updated!');
-            } else if (window.parent.Swal.getDenyButton().dataset.clicked === "true" || (window.parent.Swal.getDenyButton() && window.parent.Swal.getDenyButton().contains(document.activeElement))) {
-                 if(confirm("Hapus Project ini?")) { db.projects = db.projects.filter(x => x.id != id); saveDB(db); render(); }
+        // FUNGSI PINDAH STATUS (Drag & Drop Logic)
+        function moveProject(id, newStatus) {
+            let db = getDB();
+            let p = db.projects.find(x => x.id == id);
+            if(p) {
+                p.kanbanStatus = newStatus;
+                saveDB(db); render();
             }
         }
 
-        document.addEventListener('DOMContentLoaded', render);
-        
+        // FUNGSI HAPUS (Soft Delete)
         function deleteProject(id) {
-            window.parent.ShowAlert.confirm('Hapus Proyek?', 'Data akan hilang di semua perangkat setelah Sync.', () => {
-                let db = getDB();
-                let target = db.projects.find(p => p.id == id);
-                
-                if(target) {
-                    // LOGIKA SOFT DELETE (SMART SYNC)
-                    target.deleted = true;
-                    target.updated_at = new Date().toISOString();
-                    
-                    saveDB(db); 
-                    render();
-                    window.parent.ShowAlert.toast('success', 'Proyek dihapus.');
+            window.parent.Swal.fire({
+                title: 'Hapus Proyek?', text: "Data akan hilang di semua perangkat setelah Sync.", icon: 'warning',
+                showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya, Hapus'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    let db = getDB();
+                    let target = db.projects.find(p => p.id == id);
+                    if(target) {
+                        target.deleted = true; // Tandai sampah
+                        saveDB(db); render();
+                        window.parent.Swal.fire({icon: 'success', title: 'Terhapus', timer: 1000, showConfirmButton: false});
+                    }
                 }
             });
         }
-        
+
+        // Init
+        document.addEventListener('DOMContentLoaded', render);
     </script>
 </body>
 </html>
