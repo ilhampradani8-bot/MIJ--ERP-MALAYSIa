@@ -141,65 +141,30 @@
 
         function render() {
             const db = getDB();
-            const payments = (db.payments || []).slice().reverse();
-            let total = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-            document.getElementById('totalRevenue').innerText = 'RM ' + total.toLocaleString();
-
-            const list = document.getElementById('paymentList');
+            const list = document.getElementById('payment-list');
             list.innerHTML = '';
             
-            if(payments.length === 0) { list.innerHTML = `<div class="text-center text-muted py-5">Belum ada data pembayaran</div>`; return; }
+            // FILTER: Hanya tampilkan yang tidak dihapus
+            const payments = (db.payments || []).filter(p => !p.deleted).slice().reverse();
+            
+            if(payments.length === 0) { list.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Belum ada data.</td></tr>'; return; }
 
             payments.forEach(p => {
-                let icon = p.method.includes('Bank') ? 'fa-university' : (p.method.includes('QR') ? 'fa-qrcode' : 'fa-money-bill-wave');
                 list.innerHTML += `
-                    <div class="pay-card">
-                        <div class="d-flex align-items-center">
-                            <div class="icon-box"><i class="fas ${icon}"></i></div>
-                            <div>
-                                <h6 class="fw-bold mb-0">RM ${Number(p.amount).toLocaleString()}</h6>
-                                <small class="text-muted">dari ${p.invoiceNo} • ${p.date}</small>
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <button class="btn-print" onclick="showPreview(${p.id})" title="Cetak Kwitansi"><i class="fas fa-print"></i></button>
-                        </div>
-                    </div>`;
+                    <tr>
+                        <td>${p.date}</td>
+                        <td><span class="fw-bold text-primary">${p.invoiceNo}</span><br><small class="text-muted">${p.clientName}</small></td>
+                        <td>${p.method}</td>
+                        <td class="fw-bold text-end">RM ${Number(p.amount).toLocaleString()}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm text-danger" onclick="deletePayment(${p.id})"><i class="fas fa-times"></i></button>
+                        </td>
+                    </tr>
+                `;
             });
         }
 
-        async function addPayment() {
-            const db = getDB();
-            const unpaidInvoices = (db.invoices || []).filter(inv => inv.status !== 'Paid');
-            if (unpaidInvoices.length === 0) { UI.toast('error', 'Semua invoice sudah lunas!'); return; }
-
-            let optionsHTML = unpaidInvoices.map(inv => `<option value="${inv.id}">${inv.no} - ${inv.clientName} (Sisa: RM ${(inv.grandTotal - (inv.paidAmount||0)).toLocaleString()})</option>`).join('');
-
-            const { value: formValues } = await window.parent.Swal.fire({
-                title: 'Input Pembayaran',
-                html: `<div class="text-start mt-2"><div class="form-floating mb-3"><select id="swal-inv" class="form-select">${optionsHTML}</select><label>Pilih Invoice</label></div><div class="form-floating mb-3"><input id="swal-amount" type="number" class="form-control" placeholder="Jml"><label>Jumlah (RM)</label></div><div class="form-floating"><select id="swal-method" class="form-select"><option>Bank Transfer</option><option>Cash / Tunai</option><option>QR Pay / E-Wallet</option><option>Cheque</option></select><label>Metode</label></div></div>`,
-                confirmButtonText: 'Simpan', showCancelButton: true,
-                preConfirm: () => { const doc = window.parent.document; return { invId: doc.getElementById('swal-inv').value, amount: doc.getElementById('swal-amount').value, method: doc.getElementById('swal-method').value } }
-            });
-
-            if (formValues) {
-                const { invId, amount, method } = formValues;
-                if(!amount || amount <= 0) return;
-                const idx = db.invoices.findIndex(i => i.id == invId);
-                if(idx !== -1) {
-                    const inv = db.invoices[idx];
-                    inv.paidAmount = (inv.paidAmount || 0) + Number(amount);
-                    let sisa = inv.grandTotal - inv.paidAmount;
-                    inv.status = sisa <= 0.1 ? 'Paid' : 'Partial';
-                    
-                    if(!db.payments) db.payments = [];
-                    const newPay = { id: Date.now(), invoiceId: inv.id, invoiceNo: inv.no, clientName: inv.clientName, amount: Number(amount), method: method, date: new Date().toISOString().split('T')[0] };
-                    db.payments.push(newPay);
-                    saveDB(db); render();
-                    showPreview(newPay.id); // Langsung preview
-                }
-            }
-        }
+        
 
         // --- PREVIEW SEBELUM PRINT ---
         function showPreview(payId) {
@@ -275,6 +240,42 @@
         }
 
         document.addEventListener('DOMContentLoaded', render);
+        
+        // Fungsi Hapus Pembayaran (Koreksi Saldo)
+        function deletePayment(id) {
+            window.parent.ShowAlert.confirm('Batalkan Pembayaran?', 'Saldo Invoice akan dikoreksi otomatis.', () => {
+                let db = getDB();
+                let payIndex = db.payments.findIndex(p => p.id == id);
+                
+                if (payIndex !== -1) {
+                    let pay = db.payments[payIndex];
+                    
+                    // 1. KOREKSI INVOICE (Kembalikan Saldo)
+                    let invIndex = db.invoices.findIndex(i => i.id == pay.invoiceId);
+                    if (invIndex !== -1) {
+                        let inv = db.invoices[invIndex];
+                        inv.paidAmount = (inv.paidAmount || 0) - pay.amount; // Kurangi saldo
+                        if(inv.paidAmount < 0) inv.paidAmount = 0; // Jaga biar gak minus
+                        
+                        // Cek Status Invoice lagi
+                        let sisa = inv.grandTotal - inv.paidAmount;
+                        inv.status = sisa <= 0.1 ? 'Paid' : (inv.paidAmount > 0 ? 'Partial' : 'Unpaid');
+                        
+                        // Tandai Invoice diedit (supaya Sync ke cloud)
+                        inv.updated_at = new Date().toISOString();
+                    }
+
+                    // 2. SOFT DELETE PEMBAYARAN
+                    pay.deleted = true;
+                    pay.updated_at = new Date().toISOString();
+                    
+                    saveDB(db); 
+                    render();
+                    window.parent.ShowAlert.toast('success', 'Pembayaran dibatalkan & Saldo dikoreksi.');
+                }
+            });
+        }
+        
     </script>
 </body>
 </html>

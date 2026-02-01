@@ -91,65 +91,59 @@
         // === 1. RENDER & AUTO FIX ===
         function render() {
             const db = getDB();
-            let projects = db.projects || [];
-            let needSave = false;
             
-            // RESET KOLOM
-            ['todo', 'doing', 'review', 'done'].forEach(s => {
+            // Bersihkan kolom dulu
+            ['todo', 'progress', 'review', 'done'].forEach(s => {
                 document.getElementById('col-'+s).innerHTML = '';
                 document.getElementById('count-'+s).innerText = '0';
             });
 
-            if(projects.length === 0) {
-                document.getElementById('col-todo').innerHTML = `<div class="text-center p-3 text-muted small">Belum ada proyek.</div>`;
-                return;
-            }
+            // FILTER FINAL: Hanya ambil yang deleted = false
+            const projects = (db.projects || []).filter(p => !p.deleted);
+
+            if(projects.length === 0) return; // Kalau kosong stop
 
             projects.forEach(p => {
-                // AUTO FIX: Jika data lama tidak punya status kanban
-                if(!p.kanbanStatus) {
-                    if(p.progress >= 100) p.kanbanStatus = 'done';
-                    else if(p.progress == 0) p.kanbanStatus = 'todo';
-                    else p.kanbanStatus = 'doing';
-                    needSave = true; // Tandai untuk disimpan
-                }
+                // Pastikan kolom valid (fallback ke todo jika error)
+                const colId = ['todo', 'progress', 'review', 'done'].includes(p.kanbanStatus) ? 'col-'+p.kanbanStatus : 'col-todo';
+                const container = document.getElementById(colId);
+                
+                // Update counter
+                const countBadge = document.getElementById('count-'+ (p.kanbanStatus || 'todo'));
+                if(countBadge) countBadge.innerText = Number(countBadge.innerText) + 1;
 
-                // Render Kartu
-                const targetCol = document.getElementById('col-' + (p.kanbanStatus || 'todo')); // Fallback safe
-                if(targetCol) {
-                    let prioClass = p.priority === 'High' ? 'prio-high' : (p.priority === 'Low' ? 'prio-low' : 'prio-med');
-                    let deadlineHtml = '';
-                    if(p.deadline) {
-                        const today = new Date().toISOString().split('T')[0];
-                        const isOver = p.deadline < today && p.kanbanStatus !== 'done';
-                        deadlineHtml = `<div class="deadline-badge ${isOver ? 'deadline-over' : ''}"><i class="far fa-clock"></i> ${p.deadline} ${isOver?'(!) ':''}</div>`;
-                    }
-
-                    const card = document.createElement('div');
-                    card.className = 'proj-card';
-                    card.onclick = () => editProject(p.id);
-                    card.innerHTML = `
+                // Render Card
+                let borderClass = p.priority === 'High' ? 'border-danger' : (p.priority === 'Medium' ? 'border-warning' : 'border-light');
+                
+                container.innerHTML += `
+                    <div class="kanban-card border-start border-4 ${borderClass}">
                         <div class="d-flex justify-content-between mb-2">
-                            <span class="badge-prio ${prioClass}">${p.priority || 'Medium'}</span>
-                            <small class="fw-bold text-primary">RM ${(p.value || 0).toLocaleString()}</small>
+                            <span class="badge bg-light text-dark border">${p.clientName}</span>
+                            <div class="dropdown">
+                                <button class="btn btn-link p-0 text-muted" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-h"></i></button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#" onclick="editProject(${p.id})">Edit</a></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteProject(${p.id})">Hapus</a></li>
+                                </ul>
+                            </div>
                         </div>
-                        <h6 class="fw-bold mb-1" style="font-size:14px">${p.name}</h6>
-                        <small class="text-muted d-block mb-2">${p.clientName}</small>
-                        ${deadlineHtml}
-                        <div class="d-flex justify-content-between small mt-2 fw-bold text-muted"><span>${p.progress}%</span></div>
-                        <div class="progress-micro"><div class="progress-fill" style="width:${p.progress}%; background:${p.progress==100?'#10b981':'#3b82f6'}"></div></div>
-                    `;
-                    targetCol.appendChild(card);
-                }
+                        <h6 class="fw-bold mb-1">${p.name}</h6>
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <small class="text-muted"><i class="far fa-clock me-1"></i> ${p.deadline}</small>
+                            <span class="fw-bold text-primary">RM ${Number(p.value).toLocaleString()}</span>
+                        </div>
+                        <div class="mt-2">
+                             <select class="form-select form-select-sm" style="font-size:10px;" onchange="moveProject(${p.id}, this.value)">
+                                <option value="" disabled selected>Pindah Status...</option>
+                                <option value="todo">To Do</option>
+                                <option value="progress">In Progress</option>
+                                <option value="review">Review</option>
+                                <option value="done">Done</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
             });
-
-            // Update Counter
-            ['todo', 'doing', 'review', 'done'].forEach(s => {
-                document.getElementById('count-'+s).innerText = projects.filter(p => (p.kanbanStatus||'todo') === s).length;
-            });
-
-            // Simpan perbaikan data lama jika ada
-            if(needSave) saveDB(db);
         }
 
         // === 2. EXPORT REPORT (ANTI CRASH) ===
@@ -240,7 +234,22 @@
 
             if(formValues && formValues.name) {
                 db.projects = db.projects || [];
-                db.projects.push({ id: Date.now(), name: formValues.name, clientName: formValues.client, deadline: formValues.deadline, value: Number(formValues.value), priority: formValues.prio, progress: 0, kanbanStatus: 'todo', status: 'DEVELOPMENT' });
+                
+                // --- UPDATE DISINI ---
+                db.projects.push({ 
+                    id: Date.now(), 
+                    name: formValues.name, 
+                    clientName: formValues.client, 
+                    deadline: formValues.deadline, 
+                    value: Number(formValues.value), 
+                    priority: formValues.prio, 
+                    progress: 0, 
+                    kanbanStatus: 'todo',
+                    
+                    updated_at: new Date().toISOString(), // Tambahan
+                    deleted: false                        // Tambahan
+                });
+                
                 saveDB(db); render(); UI.toast('success', 'Project created!');
             }
         }
@@ -266,6 +275,24 @@
         }
 
         document.addEventListener('DOMContentLoaded', render);
+        
+        function deleteProject(id) {
+            window.parent.ShowAlert.confirm('Hapus Proyek?', 'Data akan hilang di semua perangkat setelah Sync.', () => {
+                let db = getDB();
+                let target = db.projects.find(p => p.id == id);
+                
+                if(target) {
+                    // LOGIKA SOFT DELETE (SMART SYNC)
+                    target.deleted = true;
+                    target.updated_at = new Date().toISOString();
+                    
+                    saveDB(db); 
+                    render();
+                    window.parent.ShowAlert.toast('success', 'Proyek dihapus.');
+                }
+            });
+        }
+        
     </script>
 </body>
 </html>

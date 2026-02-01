@@ -103,17 +103,36 @@
             }
         }
 
+        // Fungsi Render Kanban Board (Wajib Ada)
         function renderPipeline() {
             const db = getDB();
-            ['new', 'qualified', 'prop', 'won'].forEach(s => {
-                document.getElementById('list-'+s).innerHTML = '';
-                const filtered = (db.leads || []).filter(l => l.stage === s);
-                document.getElementById('count-'+s).innerText = filtered.length;
+            const stages = ['new', 'qualified', 'prop', 'won'];
+            
+            stages.forEach(s => {
+                // 1. Bersihkan kolom lama
+                const container = document.getElementById('list-' + s);
+                const counter = document.getElementById('count-' + s);
+                
+                if (container) container.innerHTML = '';
+                
+                // 2. Ambil Leads yang sesuai Stage DAN Tidak Dihapus (!deleted)
+                // Filter inilah yang bikin fitur "Hapus di HP 1 = Hapus di HP 2" jalan
+                const filtered = (db.leads || []).filter(l => l.stage === s && !l.deleted);
+                
+                // 3. Update Angka Badge
+                if (counter) counter.innerText = filtered.length;
+                
+                // 4. Render Kartu Lead
                 filtered.forEach(l => {
-                    let badgeColor = l.priority === 'High' ? 'bg-danger' : 'bg-secondary';
-                    document.getElementById('list-'+s).innerHTML += `
+                    let badgeColor = l.priority === 'High' ? 'bg-danger' : (l.priority === 'Medium' ? 'bg-warning text-dark' : 'bg-secondary');
+                    
+                    // HTML Kartu Lead
+                    container.innerHTML += `
                         <div class="card-lead" onclick="moveLead(${l.id}, '${s}')">
-                            <div class="d-flex justify-content-between mb-1"><span class="badge ${badgeColor}" style="font-size:10px">${l.priority}</span><small class="text-muted" style="font-size:10px">${l.date}</small></div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="badge ${badgeColor}" style="font-size:10px">${l.priority}</span>
+                                <small class="text-muted" style="font-size:10px">${l.date}</small>
+                            </div>
                             <h6 class="fw-bold mb-1">${l.name}</h6>
                             <small class="text-primary fw-bold">RM ${(l.value||0).toLocaleString()}</small>
                         </div>`;
@@ -124,29 +143,63 @@
         async function moveLead(id, currentStage) {
             const nextMap = { 'new': 'qualified', 'qualified': 'prop', 'prop': 'won', 'won': 'won' };
             const nextStage = nextMap[currentStage];
+            
+            // Tanya user: Mau Geser (Next) atau Hapus?
             const { isConfirmed, isDenied } = await window.parent.Swal.fire({
-                title: 'Update Status', text: 'Geser ke tahap selanjutnya?', showDenyButton: true, showCancelButton: true, confirmButtonText: `Move to ${nextStage.toUpperCase()}`, denyButtonText: 'Hapus', cancelButtonText: 'Batal'
+                title: 'Update Status',
+                text: 'Geser ke tahap selanjutnya?',
+                showDenyButton: true, 
+                showCancelButton: true,
+                confirmButtonText: `Move to ${nextStage.toUpperCase()}`,
+                denyButtonText: 'Hapus Lead', // Tombol Hapus
+                cancelButtonText: 'Batal'
             });
 
             let db = getDB();
             let lead = db.leads.find(l => l.id == id);
 
             if (isConfirmed && lead) {
+                // --- LOGIKA GESER STATUS (MOVE) ---
                 lead.stage = nextStage;
+                
+                // Jika WON (Deal), tawarkan simpan ke Database Client
                 if (nextStage === 'won' && currentStage !== 'won') {
                     saveDB(db); renderPipeline();
-                    window.parent.Swal.fire({ title: 'Deal Won! 🎉', text: 'Simpan ke Database Invoice?', icon: 'success', showCancelButton: true, confirmButtonText: 'Ya' }).then((res) => {
+                    window.parent.Swal.fire({
+                        title: 'Deal Won! 🎉', text: 'Simpan sebagai Klien Tetap agar bisa dibuatkan Invoice?',
+                        icon: 'success', showCancelButton: true, confirmButtonText: 'Ya, Simpan ke DB'
+                    }).then((res) => {
                         if(res.isConfirmed) {
                              if(!db.clients) db.clients = [];
-                             // Default Individu jika dari leads
+                             // Cek duplikat nama
                              if(!db.clients.find(c => c.name === lead.name)) {
-                                 db.clients.push({ id: Date.now(), type: 'Individu', name: lead.name, company: '-', email: '-', phone: '-' });
-                                 saveDB(db); renderDatabase(); UI.toast('success', 'Disimpan!');
+                                 db.clients.push({ 
+                                     id: Date.now(), 
+                                     name: lead.name, company: '-', email: '-', phone: '-',
+                                     type: 'Individu',
+                                     updated_at: new Date().toISOString(), // Penting buat Sync
+                                     deleted: false 
+                                 });
+                                 saveDB(db); renderDatabase();
+                                 UI.toast('success', 'Tersimpan di Database Klien!');
                              }
                         }
                     });
-                } else { saveDB(db); renderPipeline(); }
-            } else if (isDenied) { db.leads = db.leads.filter(l => l.id != id); saveDB(db); renderPipeline(); }
+                } else {
+                    saveDB(db); renderPipeline();
+                }
+
+            } else if (isDenied && lead) {
+                // --- LOGIKA HAPUS (SOFT DELETE) ---
+                // DULU: db.leads = db.leads.filter(...) -> INI SALAH (Hapus Permanen)
+                
+                // SEKARANG (BENAR): Tandai deleted = true
+                lead.deleted = true;
+                
+                saveDB(db); 
+                renderPipeline(); // Refresh tampilan (data sampah akan hilang krn difilter di render)
+                UI.toast('info', 'Lead dihapus.');
+            }
         }
 
         // === DATABASE CLIENT LOGIC (PEMBARUAN DISINI) ===
@@ -186,10 +239,19 @@
             if(formValues && formValues.name) {
                 let db = getDB();
                 if(!db.clients) db.clients = [];
-                db.clients.push({ id: Date.now(), ...formValues });
+                
+                // --- UPDATE DISINI ---
+                db.clients.push({ 
+                    id: Date.now(), 
+                    ...formValues,
+                    updated_at: new Date().toISOString(), // Tambahan Jam
+                    deleted: false                        // Tambahan Status
+                });
+                
                 saveDB(db); renderDatabase(); UI.toast('success', 'Tersimpan!');
             }
         }
+        
 
         function renderDatabase() {
             const db = getDB();

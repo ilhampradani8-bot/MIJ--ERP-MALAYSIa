@@ -130,13 +130,30 @@
             const db = getDB();
             const list = document.getElementById('invContainer');
             list.innerHTML = '';
-            const invoices = (db.invoices || []).slice().reverse();
-            if(invoices.length === 0) { list.innerHTML = `<div class="text-center text-muted py-5">Belum ada invoice.</div>`; return; }
+
+            // FILTER FINAL: Hanya ambil yang deleted = false (atau undefined)
+            const invoices = (db.invoices || []).filter(i => !i.deleted).slice().reverse();
+
+            if(invoices.length === 0) { 
+                list.innerHTML = `<div class="text-center text-muted py-5">Belum ada invoice.<br><small>Klik 'Baru' untuk membuat.</small></div>`; 
+                return; 
+            }
+
             invoices.forEach(inv => {
                 let stClass = inv.status === 'Paid' ? 'st-paid' : (inv.status === 'Partial' ? 'st-partial' : 'st-unpaid');
-                list.innerHTML += `<div class="inv-card" onclick="showOptions(${inv.id})"><div class="d-flex justify-content-between mb-2"><span class="fw-bold small text-muted">${inv.no}</span><span class="status-badge ${stClass}">${inv.status}</span></div><h5 class="fw-bold mb-1">RM ${Number(inv.grandTotal).toLocaleString()}</h5><div class="text-muted small">${inv.clientName}</div></div>`;
+                // Kita tambah tombol sampah kecil di pojok kanan (biar cepat hapus)
+                list.innerHTML += `
+                    <div class="inv-card position-relative" onclick="showOptions(${inv.id})">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold small text-muted">${inv.no}</span>
+                            <span class="status-badge ${stClass}">${inv.status}</span>
+                        </div>
+                        <h5 class="fw-bold mb-1">RM ${Number(inv.grandTotal).toLocaleString()}</h5>
+                        <div class="text-muted small">${inv.clientName}</div>
+                    </div>`;
             });
         }
+        
 
         // === FUNGSI OPEN EDITOR (PERBAIKAN SEARCH KLIEN) ===
         function openEditor(id = null) {
@@ -204,7 +221,8 @@
             document.getElementById('lbl-subtotal').innerText = subtotal.toLocaleString();
             document.getElementById('lbl-grand').innerText = 'RM ' + (subtotal + tax).toLocaleString();
         }
-        function saveInvoice() {
+      
+      function saveInvoice() {
             const clientName = document.getElementById('inp-client').value;
             if(!clientName) { UI.error('Gagal', 'Pilih Klien!'); return; }
             
@@ -214,15 +232,70 @@
             const tax = Number(document.getElementById('inp-tax').value);
             let validItems = itemList.filter(i => i.desc.trim() !== '');
             if(validItems.length === 0) { UI.error('Gagal', 'Isi minimal 1 baris'); return; }
+
             let subtotal = validItems.reduce((sum, i) => sum + (i.qty * i.price), 0);
             let grandTotal = subtotal + tax;
             let db = getDB();
-            const newData = { id: currentInvId || Date.now(), no: currentInvId ? db.invoices.find(i=>i.id==currentInvId).no : `INV/${new Date().getFullYear()}/${String((db.invoices||[]).length+1).padStart(3,'0')}`, clientName, date, dueDate, notes, items: validItems, tax, grandTotal, paidAmount: currentInvId ? db.invoices.find(i=>i.id==currentInvId).paidAmount : 0 };
+            
+            // --- INI BAGIAN PENTINGNYA ---
+            const newData = { 
+                id: currentInvId || Date.now(), 
+                no: currentInvId ? db.invoices.find(i=>i.id==currentInvId).no : `INV/${new Date().getFullYear()}/${String((db.invoices||[]).length+1).padStart(3,'0')}`, 
+                clientName, date, dueDate, notes, items: validItems, tax, grandTotal, 
+                paidAmount: currentInvId ? db.invoices.find(i=>i.id==currentInvId).paidAmount : 0,
+                
+                // KITA TAMBAHKAN 2 BARIS INI:
+                updated_at: new Date().toISOString(),  // Mencatat jam edit
+                deleted: false                         // Menandai data ini aktif (bukan sampah)
+            };
+            // -----------------------------
+
             newData.status = (newData.grandTotal - newData.paidAmount) <= 0.1 ? 'Paid' : (newData.paidAmount > 0 ? 'Partial' : 'Unpaid');
-            if (currentInvId) { let idx = db.invoices.findIndex(i => i.id == currentInvId); db.invoices[idx] = { ...db.invoices[idx], ...newData }; } else { db.invoices.push(newData); }
+            
+            if (currentInvId) { 
+                let idx = db.invoices.findIndex(i => i.id == currentInvId); 
+                db.invoices[idx] = { ...db.invoices[idx], ...newData }; 
+            } else { 
+                db.invoices.push(newData); 
+            }
             saveDB(db); closeEditor(); render(); UI.toast('success', 'Tersimpan!');
         }
-        function showOptions(id) { window.parent.Swal.fire({ title: 'Aksi Invoice', showDenyButton: true, showCancelButton: true, confirmButtonText: 'Download PDF', denyButtonText: 'Edit', cancelButtonText: 'Tutup' }).then((result) => { if (result.isConfirmed) generatePDF(id); else if (result.isDenied) openEditor(id); }); }
+        
+function showOptions(id) {
+            window.parent.Swal.fire({
+                title: 'Aksi Invoice',
+                text: 'Pilih tindakan untuk invoice ini:',
+                showDenyButton: true,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-file-pdf"></i> PDF',
+                denyButtonText: '<i class="fas fa-edit"></i> Edit',
+                cancelButtonText: 'Tutup',
+                // Tambahkan tombol Hapus di footer (custom HTML)
+                footer: `<button class="btn btn-danger btn-sm rounded-pill px-3" onclick="document.querySelector('.swal2-container').remove(); document.querySelector('iframe').contentWindow.deleteInvoice(${id})"><i class="fas fa-trash"></i> Hapus Invoice</button>`
+            }).then((result) => {
+                if (result.isConfirmed) generatePDF(id);
+                else if (result.isDenied) openEditor(id);
+            });
+        }
+        
+        
+        function deleteInvoice(id) {
+            // Konfirmasi dulu
+            window.parent.ShowAlert.confirm('Hapus Invoice?', 'Data akan hilang di semua perangkat setelah Sync.', () => {
+                let db = getDB();
+                let target = db.invoices.find(i => i.id == id);
+                
+                if(target) {
+                    // LOGIKA SOFT DELETE (SMART SYNC)
+                    target.deleted = true; 
+                    target.updated_at = new Date().toISOString(); 
+                    
+                    saveDB(db); 
+                    render();
+                    window.parent.ShowAlert.toast('success', 'Invoice dihapus (masuk antrian Sync).');
+                }
+            });
+        }
         
         function generatePDF(id) {
             const db = getDB(); const inv = db.invoices.find(i => i.id == id); const client = (db.clients || []).find(c => c.name === inv.clientName); const set = db.settings || {};
