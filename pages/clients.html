@@ -193,7 +193,8 @@
 
         function renderDatabase() {
             const db = getDB();
-            const clients = (db.clients || []).slice().reverse();
+            // FILTER: Hanya tampilkan yang deleted != true
+            const clients = (db.clients || []).filter(c => !c.deleted).slice().reverse();
             const container = document.getElementById('client-list-container');
             container.innerHTML = '';
 
@@ -221,11 +222,19 @@
         }
 
         function deleteClient(id) {
-            UI.confirm('Hapus Klien?', 'Saat disinkronisasi, data ini juga akan hilang dari Spreadsheet.', () => {
+            UI.confirm('Hapus Klien?', 'Data akan hilang di semua perangkat setelah Sync.', () => {
                 let db = getDB();
-                db.clients = db.clients.filter(c => c.id != id);
+                
+                // SMART DELETE: Jangan di-splice/buang!
+                // Cari data, tandai deleted = true, update jam-nya
+                let target = db.clients.find(c => c.id == id);
+                if (target) {
+                    target.deleted = true; 
+                    target.updated_at = new Date().toISOString();
+                }
+                
                 saveDB(db); renderDatabase();
-                UI.toast('success', 'Terhapus & Aman');
+                UI.toast('success', 'Ditandai hapus. Klik Sync untuk memproses.');
             });
         }
         

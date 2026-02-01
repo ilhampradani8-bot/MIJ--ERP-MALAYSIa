@@ -161,7 +161,6 @@
         function saveSettings() {
             let db = getDB();
             
-            // Simpan ke object settings di database pusat
             db.settings = {
                 companyName: document.getElementById('comp-name').value,
                 tagline: document.getElementById('comp-tagline').value,
@@ -174,11 +173,14 @@
                 bankHolder: document.getElementById('bank-holder').value,
                 
                 currency: document.getElementById('sys-currency').value,
-                taxRate: document.getElementById('sys-tax').value
+                taxRate: document.getElementById('sys-tax').value,
+                
+                // INI KUNCINYA: Catat Jam Simpan
+                updated_at: new Date().toISOString() 
             };
 
             saveDB(db);
-            UI.toast('success', 'Pengaturan berhasil disimpan!');
+            UI.toast('success', 'Pengaturan tersimpan & siap Sync!');
         }
 
         // --- BACKUP LOGIC ---
