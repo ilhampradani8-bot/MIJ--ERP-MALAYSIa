@@ -114,11 +114,18 @@
     </div>
 
     <script>
-        function navTo(page) {
-            if (window.parent && window.parent.loadPage) {
-                window.parent.loadPage(page);
-            }
-        }
+        
+        // FUNGSI NAVIGASI YANG BENAR
+function navTo(filename) {
+    // Kita otomatis tambahkan 'pages/' dan '.html' biar gampang
+    const fullPath = 'pages/' + filename + '.html';
+    
+    if (window.parent && window.parent.document.getElementById('content-frame')) {
+        window.parent.document.getElementById('content-frame').src = fullPath;
+    } else {
+        console.error("Gagal navigasi: Frame tidak ditemukan.");
+    }
+}
 
         function loadDashboardData() {
             // Gunakan requestAnimationFrame agar UI merender dulu baru mikir (Anti-Lag)
