@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MIJ ERP System</title>
+    <link rel="icon" type="image/png" href="mij.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-borderless/borderless.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="db_handler.js"></script>
+
+    <style>
+        :root { 
+            --primary: #0f172a; 
+            --accent: #3b82f6; 
+            --bg-light: #f1f5f9; 
+            --sidebar-width: 260px; 
+            --header-h: 60px; /* Tinggi Header Mobile */
+        }
+        
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-light); margin: 0; overflow: hidden; height: 100vh; }
+
+        /* === HEADER MOBILE (FIXED TOP) === */
+        .mobile-header {
+            display: none; /* Desktop: Sembunyi */
+            position: fixed; top: 0; left: 0; right: 0; height: var(--header-h);
+            background: white; border-bottom: 1px solid #e2e8f0; z-index: 2000;
+            align-items: center; justify-content: space-between; padding: 0 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* === SIDEBAR === */
+        .sidebar { 
+            position: fixed; top: 0; left: 0; bottom: 0; 
+            width: var(--sidebar-width); background: white; border-right: 1px solid #e2e8f0; 
+            display: flex; flex-direction: column; padding: 20px; z-index: 1000; 
+            transition: transform 0.3s ease; 
+        }
+
+        .brand-box { display: flex; align-items: center; gap: 15px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; }
+        .brand-logo { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; }
+        .brand-text h4 { font-weight: 800; font-size: 18px; color: var(--primary); margin: 0; letter-spacing: -0.5px; }
+        .brand-text span { font-size: 10px; color: #64748b; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+
+        /* MENU BUTTONS */
+        .nav-btn { width: 100%; text-align: left; padding: 12px 15px; margin-bottom: 5px; border: none; background: transparent; color: #64748b; font-weight: 600; font-size: 14px; border-radius: 10px; transition: 0.2s; display: flex; align-items: center; gap: 12px; }
+        .nav-btn:hover { background: #f8fafc; color: var(--accent); }
+        .nav-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15); }
+        
+        .user-profile { margin-top: auto; padding-top: 20px; border-top: 1px solid #f1f5f9; display: flex; align-items: center; gap: 12px; }
+        .avatar { width: 40px; height: 40px; background: #e0f2fe; color: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; }
+
+        /* === MAIN CONTENT (IFRAME) === */
+        .main-content { 
+            margin-left: var(--sidebar-width); 
+            height: 100vh; 
+            width: calc(100% - var(--sidebar-width)); 
+            border: none; 
+            background: var(--bg-light); 
+        }
+        
+        .btn-sync { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; border: none; width: 100%; padding: 12px; border-radius: 10px; font-weight: 700; font-size: 13px; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+        /* === RESPONSIVE LAYOUT (HP) === */
+        @media (max-width: 768px) {
+            /* 1. Tampilkan Header */
+            .mobile-header { display: flex; }
+
+            /* 2. Sidebar Sembunyi (Slide) */
+            .sidebar { 
+                transform: translateX(-100%); 
+                top: var(--header-h); /* Sidebar muncul DI BAWAH Header, bukan menutupi */
+                height: calc(100% - var(--header-h));
+            }
+            .sidebar.show { transform: translateX(0); }
+            
+            /* Sembunyikan brand di sidebar (karena sudah ada di header) */
+            .sidebar .brand-box { display: none; } 
+
+            /* 3. IFRAME TURUN KE BAWAH (SOLUSI UTAMA) */
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                /* Paksa posisi absolut agar tidak ketutup */
+                position: fixed;
+                top: var(--header-h); /* Mulai dari pixel ke-60 */
+                bottom: 0;
+                height: calc(100vh - var(--header-h));
+                z-index: 1; /* Di bawah header */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mobile-header">
+        <div class="d-flex align-items-center gap-3">
+            <img src="mij.png" style="height: 32px;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'">
+            <h6 class="fw-bold mb-0 text-dark" style="font-size: 16px;">MIJ ERP</h6>
+        </div>
+        <button class="btn btn-light border" style="width: 40px; height: 40px; display:flex; align-items:center; justify-content:center;" onclick="document.querySelector('.sidebar').classList.toggle('show')">
+            <i class="fas fa-bars"></i>
+        </button>
+    </div>
+
+    <div class="sidebar">
+        <div class="brand-box">
+            <img src="mij.png" class="brand-logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'"> 
+            <div class="brand-text"><h4>MIJ DIGITAL</h4><span style="font-size:10px;">INTEGRATED SYSTEM</span></div>
+        </div>
+
+        <nav>
+            <button class="nav-btn active" onclick="loadPage('pages/dashboard.html', this)"><i class="fas fa-home"></i> Dashboard</button>
+            <button class="nav-btn" onclick="loadPage('pages/projects.html', this)"><i class="fas fa-rocket"></i> Projects</button>
+            <button class="nav-btn" onclick="loadPage('pages/clients.html', this)"><i class="fas fa-users"></i> CRM & Clients</button>
+            <button class="nav-btn" onclick="loadPage('pages/invoice.html', this)"><i class="fas fa-file-invoice-dollar"></i> Invoicing</button>
+            <button class="nav-btn" onclick="loadPage('pages/payments.html', this)"><i class="fas fa-wallet"></i> Finance</button>
+            <button class="nav-btn" onclick="loadPage('pages/settings.html', this)"><i class="fas fa-cog"></i> Settings</button>
+        </nav>
+
+        <button class="btn-sync" onclick="syncData()"><i class="fas fa-sync-alt"></i> SYNC DATABASE</button>
+
+        <div class="user-profile">
+            <div class="avatar"><i class="fas fa-user-shield"></i></div>
+            <div style="line-height: 1.2;">
+                <div style="font-weight: 700; font-size: 14px; color: var(--primary)">Administrator</div>
+                <div style="font-size: 11px; color: #94a3b8;">HQ Access</div>
+            </div>
+        </div>
+    </div>
+
+    <iframe src="pages/dashboard.html" name="appFrame" class="main-content"></iframe>
+
+    <script>
+        // Navigasi
+        function loadPage(url, btn) {
+            document.querySelector('iframe').src = url;
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+            if(window.innerWidth < 768) document.querySelector('.sidebar').classList.remove('show');
+        }
+
+        // Setup SweetAlert
+        const swalCustom = Swal.mixin({ customClass: { confirmButton: 'btn btn-primary px-4 rounded-pill fw-bold mx-1', cancelButton: 'btn btn-outline-secondary px-4 rounded-pill fw-bold mx-1', popup: 'rounded-4 shadow-lg', title: 'fw-bolder text-dark fs-4' }, buttonsStyling: false });
+        window.ShowAlert = {
+            success: (t, m) => swalCustom.fire({ icon: 'success', title: t, text: m }),
+            error: (t, m) => swalCustom.fire({ icon: 'error', title: t, text: m }),
+            toast: (i, t) => { const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, didOpen: (toast) => { toast.addEventListener('mouseenter', Swal.stopTimer); toast.addEventListener('mouseleave', Swal.resumeTimer); } }); Toast.fire({ icon: i, title: t }); },
+            confirm: (t, m, cb, btn='Ya') => { swalCustom.fire({ title: t, text: m, icon: 'warning', showCancelButton: true, confirmButtonText: btn, reverseButtons: true }).then((r) => { if(r.isConfirmed) cb(); }); },
+            fire: swalCustom.fire
+        };
+        window.Swal = Swal; 
+
+        // Fungsi Sync
+        async function syncData() {
+            Swal.fire({ title: 'Menyinkronkan Data...', text: 'Mohon tunggu sebentar...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+            try {
+                await new Promise(r => setTimeout(r, 800));
+                await window.MIJ_DB.manualSyncToCloud();
+                Swal.fire({ icon: 'success', title: 'Sinkronisasi Berhasil!', text: 'Data aman di Google Sheets.', timer: 2000, showConfirmButton: false });
+            } catch (error) { console.error(error); Swal.fire({ icon: 'error', title: 'Gagal', text: 'Cek koneksi internet.' }); }
+        }
+        window.onload = function() { if(window.MIJ_DB) window.MIJ_DB.init(); }
+    </script>
+</body>
+</html>
