@@ -1,253 +1,220 @@
-// === MIJ ERP - DATABASE HANDLER & SYNC ===
-const DB_KEY = 'MIJ_ERP_v2';
-// URL Sheet.best kamu (Sesuai file yang kamu upload)
-// Konfigurasi Koneksi Database (Sheet.best)
-// Pastikan ini URL baru dari akun perusahaan
+// ==========================================
+// KONEKSI DATABASE (SHEET.BEST)
+// ==========================================
+// URL API Sheet.best Perusahaan (Owner Mode)
 const SHEETBEST_URL = 'https://api.sheetbest.com/sheets/dfdd73c7-8607-45af-a9a2-cec54ba4bdc6';
 
-// ========== 1. FUNGSI DATABASE LOKAL (CORE) ==========
+// Nama Key di LocalStorage
+const DB_KEY = 'MIJ_ERP_v2';
 
-// Fungsi inisialisasi awal database jika kosong
-function initDatabase() {
-    if (!localStorage.getItem(DB_KEY)) {
-        const initialData = {
-            version: '2.0',
-            lastSync: new Date().toISOString(),
-            lastCloudSync: null,
-            settings: {
-                companyName: 'MIJ DIGITAL MALAYSIA',
-                taxRate: 6,
-                currency: 'MYR',
-                bankAccount: 'Maybank 112233445566'
-            },
-            clients: [],
-            invoices: [],
-            projects: [],
-            leads: [],
-            payments: []
-        };
-        saveData(initialData);
-    }
-}
+// Struktur Data Standar (Jika kosong)
+const defaultDB = {
+    invoices: [],
+    clients: [],
+    projects: [],
+    payments: [],
+    leads: [],
+    settings: {}
+};
 
-// Ambil semua data
-function getAllData() {
-    // Cek apakah dipanggil dari iframe, jika ya, coba ambil dari parent dulu untuk konsistensi
-    if (window.parent && window.parent.MIJ_DB && window.parent !== window) {
-        // Opsi: return window.parent.getAllData(); 
-        // Tapi untuk aman, kita baca langsung localStorage karena localStorage dibagi antar domain yg sama
-    }
-    
-    const data = localStorage.getItem(DB_KEY);
-    if (!data) {
-        initDatabase();
-        return JSON.parse(localStorage.getItem(DB_KEY));
-    }
-    return JSON.parse(data);
-}
-
-// Simpan data
-function saveData(data) {
-    data.lastSync = new Date().toISOString();
-    localStorage.setItem(DB_KEY, JSON.stringify(data));
-    
-    // Update tampilan statistik di dashboard/header jika fungsi updateDBStats tersedia
-    if (typeof updateDBStats === 'function') {
-        updateDBStats();
-    } else if (window.parent && typeof window.parent.updateDBStats === 'function') {
-        window.parent.updateDBStats();
-    }
-    
-    return data;
-}
-
-// ========== 2. FUNGSI SYNC KE GOOGLE SHEETS (SHEET.BEST) ==========
-
-const MIJ_DB = {
-    // Wrapper agar bisa dipanggil via MIJ_DB.getAllData()
-    getAllData: getAllData,
-    saveData: saveData,
-    initDatabase: initDatabase,
-
-    // Fungsi Sync Utama
-    
-// GANTI BAGIAN "manualSyncToCloud" DENGAN INI:
-    
-// === VERSI ULTIMATE: SYNC 4 TAB (Invoice, Clients, Projects, Payments) ===
-    async manualSyncToCloud() {
-        const data = getAllData();
-        
-        // Ambil semua data
-        const invoices = data.invoices || [];
-        const clients = data.clients || [];
-        const projects = data.projects || [];
-        const payments = data.payments || [];
-
-        // Cek jika kosong melompong
-        if (!invoices.length && !clients.length && !projects.length && !payments.length) {
-            alert('Semua data masih kosong. Tidak ada yang perlu di-sync.');
-            return;
+window.MIJ_DB = {
+    // 1. Inisialisasi (Baca data lokal)
+    init: function() {
+        if (!localStorage.getItem(DB_KEY)) {
+            localStorage.setItem(DB_KEY, JSON.stringify(defaultDB));
         }
+    },
 
-        showSyncProgress('Menghubungkan ke Google Sheets...', 10);
+    // 2. Ambil Semua Data
+    getAllData: function() {
+        return JSON.parse(localStorage.getItem(DB_KEY) || JSON.stringify(defaultDB));
+    },
 
+    // 3. Simpan Data ke Lokal
+    saveData: function(newData) {
+        localStorage.setItem(DB_KEY, JSON.stringify(newData));
+    },
+
+    // 4. SYNC MANAGER (Pusat Logika)
+    manualSyncToCloud: async function() {
+        // Tampilkan Pilihan: Upload atau Download?
+        const { isConfirmed, isDenied } = await Swal.fire({
+            title: 'Sinkronisasi Database',
+            text: 'Pilih arah sinkronisasi data:',
+            icon: 'question',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: '⬆️ UPLOAD (Kirim ke Cloud)',
+            denyButtonText: '⬇️ DOWNLOAD (Ambil dari Cloud)',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#0f172a',
+            denyButtonColor: '#2563eb'
+        });
+
+        if (isConfirmed) {
+            await this.uploadToCloud();
+        } else if (isDenied) {
+            await this.downloadFromCloud();
+        }
+    },
+
+    // A. LOGIKA UPLOAD (HP -> SPREADSHEET)
+    uploadToCloud: async function() {
+        Swal.fire({ title: 'Mengupload Data...', text: 'Mohon tunggu, jangan tutup browser.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        
         try {
-            // --- PART 1: INVOICE (Tab Utama) ---
-            if (invoices.length > 0) {
-                updateSyncProgress('Upload Invoice...', 25);
-                const invData = invoices.map(inv => ({
-                    No_Invoice: inv.no,
-                    Tanggal: inv.date,
-                    Klien: inv.clientName,
-                    Total: inv.grandTotal,
-                    Status: inv.status,
-                    Dibayar: inv.paidAmount,
-                    Sisa: (inv.grandTotal - inv.paidAmount),
-                    Update_Terakhir: new Date().toISOString()
-                }));
-                
-                let res = await fetch(SHEETBEST_URL, { // URL Default = Tab 1
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(invData)
-                });
-                if (!res.ok) throw new Error("Gagal Invoice: " + await res.text());
-            }
+            const db = this.getAllData();
 
-            // --- PART 2: CLIENTS ---
-            if (clients.length > 0) {
-                updateSyncProgress('Upload Data Klien...', 50);
-                const cliData = clients.map(cl => ({
-                    ID: cl.id,
-                    Nama: cl.name,
-                    Perusahaan: cl.company,
-                    Email: cl.email,
-                    Telepon: cl.phone
-                }));
+            // 1. Format Data Invoice
+            const dataInv = db.invoices.map(i => ({
+                No_Invoice: i.no,
+                Tanggal: i.date,
+                Klien: i.clientName,
+                Total: i.grandTotal,
+                Status: i.status,
+                Dibayar: i.paidAmount || 0,
+                Sisa: i.grandTotal - (i.paidAmount || 0),
+                Update_Terakhir: new Date().toISOString().split('T')[0]
+            }));
 
-                let res = await fetch(SHEETBEST_URL + '/tabs/Clients', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(cliData)
-                });
-                if (!res.ok) throw new Error("Gagal Klien: " + await res.text());
-            }
+            // 2. Format Data Clients
+            const dataCli = db.clients.map(c => ({
+                ID: c.id,
+                Nama: c.name,
+                Perusahaan: c.company,
+                Email: c.email,
+                Telepon: c.phone
+            }));
 
-            // --- PART 3: PROJECTS ---
-            if (projects.length > 0) {
-                updateSyncProgress('Upload Proyek...', 75);
-                const projData = projects.map(p => ({
-                    ID: p.id,
-                    Nama_Proyek: p.name,
-                    Klien: p.clientName,
-                    Progress: p.progress + '%',
-                    Status: p.status,
-                    Update: new Date().toISOString()
-                }));
+            // 3. Format Data Projects
+            const dataProj = db.projects.map(p => ({
+                ID: p.id,
+                Nama_Proyek: p.name,
+                Klien: p.clientName,
+                Progress: p.progress,
+                Status: p.kanbanStatus,
+                Update: p.deadline
+            }));
 
-                let res = await fetch(SHEETBEST_URL + '/tabs/Projects', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(projData)
-                });
-                if (!res.ok) throw new Error("Gagal Proyek: " + await res.text());
-            }
+            // 4. Format Data Payments
+            const dataPay = db.payments.map(p => ({
+                Tanggal: p.date,
+                No_Invoice: p.invoiceNo,
+                Jumlah: p.amount,
+                Metode: p.method,
+                ID_Transaksi: p.id
+            }));
 
-            // --- PART 4: PAYMENTS (Keuangan) ---
-            if (payments.length > 0) {
-                updateSyncProgress('Upload Riwayat Bayar...', 90);
-                const payData = payments.map(pay => ({
-                    Tanggal: pay.date,
-                    No_Invoice: pay.invoiceNo,
-                    Jumlah: pay.amount,
-                    Metode: pay.method,
-                    ID_Transaksi: pay.id
-                }));
+            // --- EKSEKUSI KIRIM KE 4 TAB ---
+            // Kirim Sheet1 (Invoices) - Mode OVERWRITE (Timpa)
+            await fetch(SHEETBEST_URL + '/0', { 
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataInv) 
+            });
 
-                let res = await fetch(SHEETBEST_URL + '/tabs/Payments', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payData)
-                });
-                if (!res.ok) throw new Error("Gagal Payment: " + await res.text());
-            }
+            // Kirim Tab Clients
+            await fetch(SHEETBEST_URL + '/tabs/Clients', { 
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataCli) 
+            });
 
-            // --- SELESAI ---
-            updateSyncProgress('Selesai!', 100);
-            
-            data.lastCloudSync = new Date().toISOString();
-            saveData(data); // Simpan timestamp sync di lokal
+            // Kirim Tab Projects
+            await fetch(SHEETBEST_URL + '/tabs/Projects', { 
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataProj) 
+            });
 
-            setTimeout(() => {
-                hideSyncProgress();
-                alert(`✅ BACKUP LENGKAP SUKSES!\nSemua data (Inv, Client, Proyek, Payment) aman di Google Sheets.`);
-            }, 500);
+            // Kirim Tab Payments
+            await fetch(SHEETBEST_URL + '/tabs/Payments', { 
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataPay) 
+            });
+
+            Swal.fire('Sukses!', 'Data berhasil terkirim ke Google Sheets.', 'success');
 
         } catch (error) {
             console.error(error);
-            hideSyncProgress();
-            alert('❌ Sync Terputus:\n' + error.message);
+            Swal.fire('Gagal Upload', 'Cek koneksi internet atau format data.', 'error');
         }
     },
-    
 
-    // Fungsi Load (Download) dari Cloud (Opsional/Advance)
-    async loadFromCloud() {
-        if(!confirm("Fitur ini akan menimpa data lokal dengan data dari Google Sheets. Yakin?")) return;
-        
+    // B. LOGIKA DOWNLOAD (SPREADSHEET -> HP)
+    downloadFromCloud: async function() {
+        Swal.fire({ title: 'Mendownload Data...', text: 'Mengambil data dari Google Sheets...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
         try {
-            showSyncProgress('Mengunduh data...', 30);
-            const response = await fetch(SHEETBEST_URL);
-            const cloudData = await response.json();
+            // Fetch Semua Tab secara Paralel
+            const [resInv, resCli, resProj, resPay] = await Promise.all([
+                fetch(SHEETBEST_URL + '/0'),
+                fetch(SHEETBEST_URL + '/tabs/Clients'),
+                fetch(SHEETBEST_URL + '/tabs/Projects'),
+                fetch(SHEETBEST_URL + '/tabs/Payments')
+            ]);
+
+            const rawInv = await resInv.json();
+            const rawCli = await resCli.json();
+            const rawProj = await resProj.json();
+            const rawPay = await resPay.json();
+
+            // --- REKONSTRUKSI DATA (Mapping Balik) ---
             
-            // Disini logika parsing dari Sheets kembali ke format Database App perlu dibuat
-            // Karena format di Sheets sudah 'flat', agak rumit mengembalikannya ke struktur 'complex'.
-            // Untuk sekarang kita hanya alert sukses koneksi saja.
+            // 1. Restore Invoices
+            const newInvoices = rawInv.map((row, idx) => ({
+                id: Date.now() + idx, // Generate ID baru jika hilang
+                no: row.No_Invoice,
+                clientName: row.Klien,
+                date: row.Tanggal,
+                grandTotal: Number(row.Total),
+                status: row.Status,
+                paidAmount: Number(row.Dibayar),
+                items: [{ desc: 'Restored from Cloud', qty: 1, price: Number(row.Total) }] // Default Item karena Sheet tidak simpan detail item
+            }));
+
+            // 2. Restore Clients
+            const newClients = rawCli.map(row => ({
+                id: Number(row.ID) || Date.now(),
+                name: row.Nama,
+                company: row.Perusahaan,
+                email: row.Email,
+                phone: row.Telepon,
+                type: row.Perusahaan && row.Perusahaan !== '-' ? 'Perusahaan' : 'Individu'
+            }));
+
+            // 3. Restore Projects
+            const newProjects = rawProj.map(row => ({
+                id: Number(row.ID) || Date.now(),
+                name: row.Nama_Proyek,
+                clientName: row.Klien,
+                progress: Number(row.Progress),
+                kanbanStatus: row.Status || 'todo',
+                deadline: row.Update
+            }));
+
+            // 4. Restore Payments
+            const newPayments = rawPay.map(row => ({
+                id: Number(row.ID_Transaksi) || Date.now(),
+                date: row.Tanggal,
+                invoiceNo: row.No_Invoice,
+                amount: Number(row.Jumlah),
+                method: row.Metode
+            }));
+
+            // SIMPAN KE LOCAL STORAGE
+            const db = this.getAllData();
+            db.invoices = newInvoices;
+            db.clients = newClients;
+            db.projects = newProjects;
+            db.payments = newPayments;
             
-            updateSyncProgress('Selesai...', 100);
-            setTimeout(() => {
-                hideSyncProgress();
-                alert(`Data berhasil ditarik! (Ditemukan ${cloudData.length} baris). Logika restore belum diaktifkan demi keamanan data.`);
-            }, 500);
+            this.saveData(db);
+
+            Swal.fire({
+                title: 'Download Berhasil!',
+                text: 'Halaman akan dimuat ulang untuk menampilkan data.',
+                icon: 'success'
+            }).then(() => {
+                parent.location.reload(); // Refresh halaman
+            });
 
         } catch (error) {
-            hideSyncProgress();
-            alert('Gagal Load: ' + error.message);
+            console.error(error);
+            Swal.fire('Gagal Download', 'Pastikan Header Google Sheet sudah benar (Case Sensitive).', 'error');
         }
     }
 };
-
-// ========== 3. UTILITIES (UI PROGRESS BAR) ==========
-
-function showSyncProgress(msg, percent) {
-    let el = document.getElementById('syncOverlay');
-    if (!el) {
-        el = document.createElement('div');
-        el.id = 'syncOverlay';
-        el.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;color:white;font-family:sans-serif;';
-        el.innerHTML = `<h3 id="syncMsg">${msg}</h3><div style="width:300px;height:10px;background:#333;border-radius:5px;margin-top:10px;"><div id="syncBar" style="width:${percent}%;height:100%;background:#4ade80;border-radius:5px;transition:0.3s;"></div></div>`;
-        document.body.appendChild(el);
-    } else {
-        document.getElementById('syncMsg').innerText = msg;
-        document.getElementById('syncBar').style.width = percent + '%';
-    }
-}
-
-function updateSyncProgress(msg, percent) {
-    showSyncProgress(msg, percent);
-}
-
-function hideSyncProgress() {
-    const el = document.getElementById('syncOverlay');
-    if (el) el.remove();
-}
-
-// ========== 4. GLOBAL EXPOSE ==========
-// Agar bisa diakses dari file HTML manapun
-window.MIJ_DB = MIJ_DB;
-window.getAllData = getAllData;
-window.saveData = saveData;
-window.initDatabase = initDatabase;
-
-// Auto init saat file dimuat
-initDatabase();
