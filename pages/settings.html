@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8fafc; font-family: 'Inter', sans-serif; padding: 20px; color: #1e293b; padding-bottom: 80px; }
+        
+        /* HEADER */
+        .header-action { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        
+        /* CARDS */
+        .card-set { background: white; border-radius: 12px; padding: 25px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .card-header-set { font-weight: 700; font-size: 15px; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; color: #334155; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        /* FORM INPUTS */
+        label { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px; }
+        .form-control { border-color: #cbd5e1; font-size: 14px; padding: 10px; border-radius: 8px; }
+        .form-control:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        
+        /* BUTTONS */
+        .btn-action { width: 100%; padding: 12px; font-weight: 600; border-radius: 8px; text-align: left; display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; transition: 0.2s; border: 1px solid transparent; }
+        .btn-backup { background: #f0f9ff; color: #0284c7; border-color: #bae6fd; }
+        .btn-danger-zone { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+        .btn-save-float { position: fixed; bottom: 20px; right: 20px; z-index: 100; box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.4); }
+    </style>
+</head>
+<body>
+
+    <div class="header-action">
+        <div>
+            <h4 class="fw-bold mb-0">⚙️ Pengaturan</h4>
+            <small class="text-muted">Atur profil bisnis & data bank</small>
+        </div>
+    </div>
+
+    <div class="card-set">
+        <div class="card-header-set"><i class="fas fa-building me-2"></i> Profil Bisnis (Untuk Invoice)</div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label>Nama Perusahaan / Bisnis</label>
+                <input type="text" id="comp-name" class="form-control" placeholder="Contoh: MIJ DIGITAL">
+            </div>
+            <div class="col-md-6">
+                <label>Slogan / Tagline</label>
+                <input type="text" id="comp-tagline" class="form-control" placeholder="IT Consultant & Dev">
+            </div>
+            <div class="col-12">
+                <label>Alamat Lengkap</label>
+                <textarea id="comp-address" class="form-control" rows="2" placeholder="Alamat kantor yang akan muncul di kop surat..."></textarea>
+            </div>
+            <div class="col-md-6">
+                <label>Email Resmi</label>
+                <input type="email" id="comp-email" class="form-control" placeholder="admin@mij.com">
+            </div>
+            <div class="col-md-6">
+                <label>No. WhatsApp / Telepon</label>
+                <input type="text" id="comp-phone" class="form-control" placeholder="+62...">
+            </div>
+        </div>
+    </div>
+
+    <div class="card-set" style="border-left: 4px solid #3b82f6;">
+        <div class="card-header-set text-primary"><i class="fas fa-university me-2"></i> Rekening Pembayaran (Untuk Receipt)</div>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label>Nama Bank / E-Wallet</label>
+                <input type="text" id="bank-name" class="form-control" placeholder="Contoh: MAYBANK / BCA">
+            </div>
+            <div class="col-md-4">
+                <label>Nomor Rekening</label>
+                <input type="text" id="bank-acc" class="form-control fw-bold font-monospace" placeholder="1122334455">
+            </div>
+            <div class="col-md-4">
+                <label>Atas Nama (Holder)</label>
+                <input type="text" id="bank-holder" class="form-control" placeholder="Nama Pemilik Rekening">
+            </div>
+        </div>
+        <div class="mt-3 small text-muted bg-light p-2 rounded">
+            <i class="fas fa-info-circle me-1"></i> Data ini akan otomatis muncul di bagian bawah PDF Invoice & Kwitansi agar klien tahu kemana harus transfer.
+        </div>
+    </div>
+
+    <div class="card-set">
+        <div class="card-header-set"><i class="fas fa-sliders-h me-2"></i> Preferensi Sistem</div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label>Mata Uang (Simbol)</label>
+                <select id="sys-currency" class="form-select form-control">
+                    <option value="RM">Ringgit Malaysia (RM)</option>
+                    <option value="Rp">Rupiah Indonesia (Rp)</option>
+                    <option value="$">US Dollar ($)</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label>Pajak Default (%)</label>
+                <input type="number" id="sys-tax" class="form-control" placeholder="0">
+            </div>
+        </div>
+    </div>
+
+    <div class="card-set border-warning">
+        <div class="card-header-set text-warning"><i class="fas fa-database me-2"></i> Backup & Restore</div>
+        <p class="small text-muted mb-3">Amankan datamu sebelum berganti perangkat.</p>
+        
+        <div class="row g-2">
+            <div class="col-md-6">
+                <button class="btn btn-action btn-backup" onclick="downloadBackup()">
+                    <span><i class="fas fa-download me-2"></i> Download Backup JSON</span>
+                </button>
+            </div>
+            <div class="col-md-6">
+                <button class="btn btn-action btn-backup" onclick="document.getElementById('fileInput').click()">
+                    <span><i class="fas fa-upload me-2"></i> Restore dari File</span>
+                </button>
+                <input type="file" id="fileInput" hidden onchange="restoreBackup(this)">
+            </div>
+        </div>
+
+        <hr class="my-4">
+        
+        <button class="btn btn-action btn-danger-zone" onclick="factoryReset()">
+            <span><i class="fas fa-trash-alt me-2"></i> Reset Pabrik (Hapus Semua Data)</span>
+        </button>
+    </div>
+
+    <button class="btn btn-primary rounded-pill px-5 py-3 fw-bold btn-save-float" onclick="saveSettings()">
+        <i class="fas fa-save me-2"></i> SIMPAN PENGATURAN
+    </button>
+
+    <script>
+        function getDB() { return window.parent.MIJ_DB ? window.parent.MIJ_DB.getAllData() : JSON.parse(localStorage.getItem('MIJ_ERP_v2') || '{}'); }
+        function saveDB(data) { window.parent.MIJ_DB ? window.parent.MIJ_DB.saveData(data) : localStorage.setItem('MIJ_ERP_v2', JSON.stringify(data)); }
+        const UI = window.parent.ShowAlert;
+
+        // LOAD DATA SAAT DIBUKA
+        function loadSettings() {
+            const db = getDB();
+            const set = db.settings || {}; // Ambil object settings
+
+            // Profil
+            document.getElementById('comp-name').value = set.companyName || '';
+            document.getElementById('comp-tagline').value = set.tagline || '';
+            document.getElementById('comp-address').value = set.address || '';
+            document.getElementById('comp-email').value = set.email || '';
+            document.getElementById('comp-phone').value = set.phone || '';
+
+            // Bank
+            document.getElementById('bank-name').value = set.bankName || '';
+            document.getElementById('bank-acc').value = set.bankAccount || '';
+            document.getElementById('bank-holder').value = set.bankHolder || '';
+
+            // System
+            document.getElementById('sys-currency').value = set.currency || 'RM';
+            document.getElementById('sys-tax').value = set.taxRate || 0;
+        }
+
+        // SIMPAN DATA
+        function saveSettings() {
+            let db = getDB();
+            
+            // Simpan ke object settings di database pusat
+            db.settings = {
+                companyName: document.getElementById('comp-name').value,
+                tagline: document.getElementById('comp-tagline').value,
+                address: document.getElementById('comp-address').value,
+                email: document.getElementById('comp-email').value,
+                phone: document.getElementById('comp-phone').value,
+                
+                bankName: document.getElementById('bank-name').value,
+                bankAccount: document.getElementById('bank-acc').value,
+                bankHolder: document.getElementById('bank-holder').value,
+                
+                currency: document.getElementById('sys-currency').value,
+                taxRate: document.getElementById('sys-tax').value
+            };
+
+            saveDB(db);
+            UI.toast('success', 'Pengaturan berhasil disimpan!');
+        }
+
+        // --- BACKUP LOGIC ---
+        function downloadBackup() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(getDB()));
+            const dl = document.createElement('a');
+            const date = new Date().toISOString().slice(0,10);
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", `BACKUP_MIJ_${date}.json`);
+            document.body.appendChild(dl); dl.click(); dl.remove();
+        }
+
+        function restoreBackup(input) {
+            const f = input.files[0]; if(!f) return;
+            const r = new FileReader();
+            r.onload = function(e) {
+                try {
+                    const d = JSON.parse(e.target.result);
+                    UI.confirm('Restore Data?', 'Data saat ini akan digantikan oleh file backup.', () => { 
+                        saveDB(d); 
+                        UI.success('Berhasil', 'Sistem akan dimuat ulang...');
+                        setTimeout(() => parent.location.reload(), 1500); 
+                    });
+                } catch(e) { UI.error('Gagal', 'File backup tidak valid'); }
+            }; r.readAsText(f);
+            input.value = ''; // Reset
+        }
+
+        function factoryReset() {
+            UI.confirm('RESET TOTAL?', 'Semua data Invoice, Klien, dll akan HILANG PERMANEN.', () => { 
+                localStorage.removeItem('MIJ_ERP_v2'); 
+                parent.location.reload(); 
+            }, 'YA, HAPUS SEMUA');
+        }
+
+        document.addEventListener('DOMContentLoaded', loadSettings);
+    </script>
+</body>
+</html>
